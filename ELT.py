@@ -29,15 +29,30 @@ def guardarTabla(df, sheet_name, worksheet_name):
     print(f'DataFrame escrito en la hoja {sheet_name} / {worksheet_name}.')
 
 def crearDF(df,atrib):
+    primero = df.head(1)
+    ultimo = df.tail(1)
+    cierre_inicial = primero['Close'].values[0]
+    cierre_final = ultimo['Close'].values[0]
+    print(cierre_inicial,cierre_final)
     metricas = ['intervalo',
                 'max', 
+                'percentil 75',
+                'percentil 25',
                 'min', 
                 'promedio',
-                'volumen_prom']
+                'mediana',
+                'coef. de var.',
+                'cambio de precio',
+                'volumen prom']
     valores = [atrib,
                df['High'].max(), 
+               df['Close'].quantile(0.75).round(2), 
+               df['Close'].quantile(0.25).round(2), 
                df['Low'].min(), 
                df['Close'].mean().round(2),
+               df['Close'].median().round(2),
+               df["Close"].std(ddof=0) / df["Close"].mean(),
+               (cierre_final - cierre_inicial) / cierre_inicial, 
                df['Volume'].mean().round(0)]
     
     df = pd.DataFrame()
@@ -46,6 +61,7 @@ def crearDF(df,atrib):
 
     return df
 def crearDFAnual(df,atrib):
+    df['Date']=df['Date'].astype(str)
     df[['ano','mes','dia']] = df['Date'].str.split('-', expand=True)
 
     df = df.groupby("ano")["Close"].aggregate(['max', 'min','mean'])
@@ -53,12 +69,12 @@ def crearDFAnual(df,atrib):
 
 def bajardatos():
     print("Indica el Ticker -> ", end="")
-    ticker = "MCD" #input()
-    #response = requests.get('https://eodhistoricaldata.com/api/eod/'+ticker+'.US?api_token=63f13355271d82.00446851')
-    #df = pd.read_csv(StringIO(response.text), skipfooter=0, parse_dates=[0], index_col=0, engine='python')
+    ticker = input()
+    response = requests.get('https://eodhistoricaldata.com/api/eod/'+ticker+'.US?api_token=63f13355271d82.00446851')
+    df = pd.read_csv(StringIO(response.text), skipfooter=0, parse_dates=[0], index_col=0, engine='python')
 
-    #print(df.tail(1))
-    df = pd.read_csv('MCD.US.csv')
+    print(df.tail(1))
+    #df = pd.read_csv('MCD.US.csv')
 
     df7d = crearDF( df.tail(7),"7d")
 
@@ -71,6 +87,7 @@ def bajardatos():
 
     guardarTabla(dfTriple,'ELT-Getxerpa',worksheet_name=ticker )
 
+    df.reset_index(inplace=True)
     dfAnual = crearDFAnual(df,"Anual")
     dfAnual.reset_index(inplace=True)
     print(dfAnual)
